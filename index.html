@@ -111,6 +111,13 @@
     .portal-loading,.portal-empty,.portal-error { grid-column:1/-1; padding:28px; text-align:center; background:#fff; border-radius:12px; color:#777; }
     .portal-loading-message { display:flex; align-items:center; gap:9px; margin:-8px 0 13px; color:#d90000; font-weight:600; font-size:.92rem; }
     .portal-loading-spinner { width:17px; height:17px; border:2px solid #ffd3d3; border-top-color:#e60000; border-radius:50%; animation:portalSpin .8s linear infinite; }
+    #examFrameOverlay { position:fixed; inset:0; z-index:100000; display:none; flex-direction:column; background:#fff; }
+    .exam-frame-bar { height:48px; flex:0 0 48px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:#fff; border-bottom:1px solid #eee; box-shadow:0 2px 10px rgba(0,0,0,.05); font-weight:700; }
+    .exam-frame-close { width:36px; height:36px; border:0; border-radius:50%; background:#f3f4f6; color:#333; font-size:24px; line-height:1; cursor:pointer; }
+    .exam-frame-stage { position:relative; flex:1; min-height:0; background:#f5f5f8; }
+    #examFrame { display:block; width:100%; height:100%; border:0; background:#f5f5f8; }
+    .exam-frame-loading { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#666; background:linear-gradient(135deg,#f5f5f8,#fff 52%,#fff4f4); }
+    .exam-frame-loading .portal-loading-spinner { width:28px; height:28px; border-width:3px; }
     .skeleton-card { position:relative; overflow:hidden; }
     .skeleton-card:after { content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.72) 48%,transparent 75%); animation:skeletonShimmer 1.55s ease-in-out infinite; pointer-events:none; }
     .skeleton { display:block; border-radius:999px; background:#e5e7eb; }
@@ -208,6 +215,11 @@
     <footer class="portal-footer">TAA ExamBank</footer>
   </section>
 
+  <section id="examFrameOverlay" aria-label="หน้าทำข้อสอบ">
+    <div class="exam-frame-bar"><span>TAA Exam Portal · ข้อสอบ</span><button class="exam-frame-close" type="button" onclick="closeExamInPortal()" aria-label="กลับไปหน้า Portal">×</button></div>
+    <div class="exam-frame-stage"><div id="examFrameLoading" class="exam-frame-loading"><span class="portal-loading-spinner" aria-hidden="true"></span><strong>กำลังเปิดข้อสอบ...</strong></div><iframe id="examFrame" title="ข้อสอบ"></iframe></div>
+  </section>
+
   <div id="storageAlert" style="display:none; background:#ffdede; color:red; padding:10px; font-size:0.85rem; margin-bottom:15px; border-radius:5px; border:1px solid red; text-align:left;">
     <b>⚠️ คำเตือนโหมดไม่ระบุตัวตน (Incognito):</b><br>
     ระบบตรวจพบว่าเครื่องของคุณไม่บันทึกข้อมูล<br>
@@ -289,7 +301,8 @@
 
   const IS_APPS_SCRIPT_HTML = !!(window.google && google.script && google.script.run);
   // GitHub Pages does not evaluate Apps Script template tags. An empty ID means Portal.
-  const EXID = SCRIPT_EXID.startsWith('<') ? (new URLSearchParams(window.location.search).get('id') || '') : SCRIPT_EXID;
+  const REQUESTED_EXAM_ID = new URLSearchParams(window.location.search).get('id') || '';
+  const EXID = IS_APPS_SCRIPT_HTML ? (SCRIPT_EXID.startsWith('<') ? REQUESTED_EXAM_ID : SCRIPT_EXID) : '';
   let TL = Number(SCRIPT_TIMELIMIT) || 0;
   let EXNAME = SCRIPT_EXAMNAME.startsWith('<') ? '' : SCRIPT_EXAMNAME;
 
@@ -301,6 +314,7 @@
     ['s1','tt','tb','qf','rs'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     window.scrollTo(0, 0);
     loadPortalCourses();
+    if (!IS_APPS_SCRIPT_HTML && REQUESTED_EXAM_ID) openExamInPortal(REQUESTED_EXAM_ID);
   } else {
     document.getElementById('examTitle').innerText = EXNAME || 'กำลังโหลดข้อมูลวิชา...';
     if (!IS_APPS_SCRIPT_HTML) loadGithubExamInfo();
@@ -460,16 +474,38 @@
         <div class="course-card-top"><span class="course-id">${safeId}</span><span class="course-state ${isOpen ? 'is-open' : ''}">${isOpen ? 'เปิดสอบ' : 'ปิดสอบ'}</span></div>
         <div class="course-content"><div class="exam-thumb">${examPaperIcon}</div><div><h2 class="course-name">${safeName}</h2><div class="course-meta">แบบประเมิน${course.time ? ' • ' + course.time + ' นาที' : ''}</div></div></div>
         ${isOpen
-          ? `<a class="course-action" href="${getPortalExamUrl(course.id)}">${action}</a>`
+          ? (IS_APPS_SCRIPT_HTML
+              ? `<a class="course-action" href="${getPortalExamUrl(course.id)}">${action}</a>`
+              : `<button class="course-action" type="button" data-exam-id="${safeId}" onclick="openExamInPortal(this.dataset.examId)">${action}</button>`)
           : `<button class="course-action is-closed" type="button" disabled>${action}</button>`}
       </article>`;
     }).join('');
   }
 
   function getPortalExamUrl(examId) {
-    // ใช้ URL /exec ที่ส่งมาจากฝั่ง Apps Script เพื่อไม่หลุดไป userCodeAppPanel
-    if (IS_APPS_SCRIPT_HTML) return APP_URL + '?id=' + encodeURIComponent(examId);
-    return window.location.pathname + '?id=' + encodeURIComponent(examId);
+    return APP_URL + '?id=' + encodeURIComponent(examId);
+  }
+
+  function openExamInPortal(examId) {
+    const overlay = document.getElementById('examFrameOverlay');
+    const frame = document.getElementById('examFrame');
+    if (!overlay || !frame || !examId) return;
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    const loading = document.getElementById('examFrameLoading');
+    if (loading) loading.style.display = 'flex';
+    frame.onload = () => { if (loading) loading.style.display = 'none'; };
+    frame.src = WEB_APP_URL + '?id=' + encodeURIComponent(examId);
+  }
+
+  function closeExamInPortal() {
+    const overlay = document.getElementById('examFrameOverlay');
+    const frame = document.getElementById('examFrame');
+    if (frame) frame.src = 'about:blank';
+    if (overlay) overlay.style.display = 'none';
+    const loading = document.getElementById('examFrameLoading');
+    if (loading) loading.style.display = 'flex';
+    document.body.style.overflow = '';
   }
 
   function escapePortalHtml(value) {
