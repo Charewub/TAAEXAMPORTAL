@@ -250,9 +250,9 @@
   const ADMIN_PWD = "TMCsurameaw888"; 
   // =================================================
 
-  const EXID = "<?= examId ?>"; 
-  const TL = Number("<?= timeLimit ?>"); 
-  const EXNAME = "<?= examName ?>";
+  const SCRIPT_EXID = "<?= examId ?>";
+  const SCRIPT_TIMELIMIT = "<?= timeLimit ?>";
+  const SCRIPT_EXAMNAME = "<?= examName ?>";
   // ใส่ URL Web App ที่ลงท้ายด้วย /exec ตรงนี้ เมื่อเตรียมไฟล์บน GitHub
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwzR70Sl2zyuljokw8Fm0wn6iO5L3ZJffMv722m3SWkRpHejwQxeQKn5JgRxq93vqcFVw/exec";
   // เมื่อ Apps Script เป็นผู้เสิร์ฟหน้า จะใช้ URL จริงที่ส่งมาจาก GScode ก่อน
@@ -261,9 +261,11 @@
     ? APP_URL_FROM_GAS
     : WEB_APP_URL;
 
-  // หน้านี้ต้องถูกเสิร์ฟผ่าน Apps Script Web App เพื่อให้ template และ google.script.run ทำงาน
-  // ไม่ redirect อัตโนมัติ เพื่อให้เปิดหน้า Web App ได้ตรงตาม URL เดิม
   const IS_APPS_SCRIPT_HTML = !!(window.google && google.script && google.script.run);
+  // GitHub Pages does not evaluate Apps Script template tags. An empty ID means Portal.
+  const EXID = SCRIPT_EXID.startsWith("<?=") ? '' : SCRIPT_EXID;
+  const TL = Number(SCRIPT_TIMELIMIT) || 0;
+  const EXNAME = SCRIPT_EXAMNAME.startsWith("<?=") ? '' : SCRIPT_EXAMNAME;
 
   // ไม่มี ExamID = แสดง Portal; มี ExamID = ใช้หน้าเข้าสอบเดิมทั้งหมด
   if (!EXID || EXID === 'undefined') {
@@ -283,7 +285,7 @@
 
   function loadPortalCourses() {
     if (!(window.google && google.script && google.script.run)) {
-      document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เปิดหน้านี้ผ่านลิงก์ Web App ของ Google Apps Script เพื่อโหลดรายการวิชา</div>';
+      loadPortalCoursesFromApi();
       return;
     }
     google.script.run
@@ -298,6 +300,34 @@
         console.error('Portal list error:', err);
       })
       .getAdminExamList();
+  }
+
+  function loadPortalCoursesFromApi() {
+    const callbackName = 'taaPortalCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+    const script = document.createElement('script');
+    const cleanup = () => {
+      if (script.parentNode) script.parentNode.removeChild(script);
+      try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+    };
+    const timeout = setTimeout(() => {
+      cleanup();
+      document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เชื่อมต่อรายการวิชาไม่สำเร็จ กรุณาลองโหลดหน้าใหม่</div>';
+    }, 15000);
+    window[callbackName] = rows => {
+      clearTimeout(timeout);
+      cleanup();
+      portalCourses = (rows || []).filter(r => r && r[0]).map(r => ({
+        id: String(r[0]).trim(), name: String(r[1] || '').trim(), status: String(r[2] || 'OFF').trim().toUpperCase(), time: Number(r[3]) || 0
+      }));
+      renderPortalCourses();
+    };
+    script.onerror = () => {
+      clearTimeout(timeout);
+      cleanup();
+      document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เชื่อมต่อ Google Apps Script ไม่ได้ กรุณาตรวจสอบการ Deploy</div>';
+    };
+    script.src = WEB_APP_URL + '?api=examList&callback=' + encodeURIComponent(callbackName) + '&_=' + Date.now();
+    document.head.appendChild(script);
   }
 
   function setPortalFilter(filter, button) {
