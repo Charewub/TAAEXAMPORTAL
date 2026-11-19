@@ -261,6 +261,10 @@
     ? APP_URL_FROM_GAS
     : WEB_APP_URL;
 
+  // หน้านี้ต้องถูกเสิร์ฟผ่าน Apps Script Web App เพื่อให้ template และ google.script.run ทำงาน
+  // ไม่ redirect อัตโนมัติ เพื่อให้เปิดหน้า Web App ได้ตรงตาม URL เดิม
+  const IS_APPS_SCRIPT_HTML = !!(window.google && google.script && google.script.run);
+
   // ไม่มี ExamID = แสดง Portal; มี ExamID = ใช้หน้าเข้าสอบเดิมทั้งหมด
   if (!EXID || EXID === 'undefined') {
     document.body.classList.add('portal-mode');
