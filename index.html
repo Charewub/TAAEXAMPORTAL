@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Shared AirAsia visual system for Portal and exam sign-in */
+    body { font-family:'Sarabun',sans-serif !important; -webkit-user-select:none; user-select:none; background:radial-gradient(ellipse at 4% 82%,rgba(230,0,0,.075),transparent 27%),radial-gradient(ellipse at 96% 10%,rgba(230,0,0,.055),transparent 25%),linear-gradient(135deg,#f5f5f8 0%,#fff 52%,#f4f4f7 100%); margin:0; padding:24px; display:flex; justify-content:center; align-items:center; min-height:100vh; box-sizing:border-box; position:relative; }
+    #c { background:rgba(255,255,255,.96); padding:38px 40px; border-radius:22px; box-shadow:0 18px 55px rgba(28,26,38,.12); width:min(720px,100%); box-sizing:border-box; position:relative; z-index:2; overflow:hidden; text-align:center; border:1px solid rgba(255,255,255,.9); }
+    .logo-image { width:150px; margin-bottom:18px; }
+    h3 { margin:0 0 20px 0; color:#202124; font-weight:700; font-size:1.35rem; line-height:1.35; }
+    .warning-box { background:linear-gradient(135deg,#fff3f3,#fff8f8); border:1px solid #ffd4d4; color:#c90000; padding:18px 20px; border-radius:14px; font-size:1rem; margin-bottom:24px; text-align:left; line-height:1.65; }
+    .airasia-background { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+    .airasia-background svg { width:100%; height:100%; display:block; }
+    .flight-route { fill:none; stroke:#e60000; stroke-width:2; stroke-opacity:.19; stroke-dasharray:3 9; stroke-linecap:round; }
+    .flight-route-solid { fill:none; stroke:#e60000; stroke-width:1.6; stroke-opacity:.25; stroke-linecap:round; }
+    .route-glow { fill:none; stroke:#ef4545; stroke-width:42; stroke-opacity:.025; filter:blur(12px); }
+    .flight-plane { fill:#e60000; opacity:.8; }
+    @media (prefers-reduced-motion:reduce) { .flight-plane { display:none; } }
+    input { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; background: #fafafa; box-sizing: border-box; font-size: 1rem; font-family: 'Sarabun'; }
+    input:focus { border-color: #E60000; outline: none; background: #fff; }
+    .btn { width: 100%; padding: 16px; font-weight: bold; font-size: 1.1rem; color: #fff; background: #E60000; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(230, 0, 0, 0.2); }
+    .btn:active { transform: scale(0.98); }
+    
+    @media(max-width:600px) { body:not(.portal-mode) { padding:12px; align-items:flex-start; } body:not(.portal-mode) #c { padding:26px 18px; border-radius:18px; margin:10px 0; } body:not(.portal-mode) .logo-image { width:122px; } body:not(.portal-mode) h3 { font-size:1.12rem; } body:not(.portal-mode) .warning-box { padding:14px; font-size:.92rem; } }
+
+    /* ปุ่ม Action เมื่อมี Error */
+    .action-btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+    .btn-retry { background: #FF6600; display: none; }
+    .btn-manual { background: #555; display: none; }
+    
+    /* ⭐ สไตล์ใหม่สำหรับ Admin Link (เหมือน Hyperlink) */
+    .admin-link {
+        display: inline-block;
+        margin-top: 15px;
+        color: #999;
+        font-size: 0.85rem;
+        text-decoration: underline;
+        cursor: pointer;
+        border: none;
+        background: none;
+        transition: 0.2s;
+    }
+    .admin-link:hover { color: #555; }
+    
+    .wm { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-around; align-items: center; z-index: 0; opacity: 0.15; font-weight: bold; pointer-events: none; overflow: hidden; }
+    .wm span { transform: rotate(-30deg); white-space: nowrap; font-size: 0.9rem; }
+    .z1 { position: relative; z-index: 1; }
+    #tb { width: 100%; height: 8px; background: #eee; border-radius: 4px; margin-bottom: 20px; display: none; }
+    #t { height: 100%; background: #E60000; transition: width 0.5s linear; border-radius: 4px; }
+    .opt { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; text-align: left; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+    .opt.sel { background: #FFEDED; border-color: #E60000; color: #E60000; font-weight: bold; }
+    .nav { display: flex; justify-content: space-between; margin-top: 30px; }
+    .nav button { padding: 10px 25px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-family: 'Sarabun'; cursor: pointer; }
+    .nav .p { border: none; background: #E60000; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    div:where(.swal2-container) { font-family: 'Sarabun', sans-serif !important; }
+    
+    .pass-status { font-size: 1.5rem; margin: 0 0 5px 0; }
+    .fail-status { font-size: 1.5rem; margin: 0 0 5px 0; color: #E60000; }
+    
+    #syncStatus { margin-top: 15px; padding: 10px; border-radius: 8px; font-size: 0.9rem; display:none; }
+    .sync-sending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .sync-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .sync-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    /* พื้นที่สำหรับ Copy Code */
+    #manualDataArea { display: none; margin-top: 15px; }
+    textarea { width: 100%; height: 80px; padding: 10px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 5px; color: #555; background: #eee; box-sizing: border-box;}
+
+    /* Portal layer */
+    body.portal-mode { display:block; padding:0; min-height:100vh; background:transparent; }
+    body.portal-mode #c { width:100%; max-width:none; min-height:100vh; box-sizing:border-box; padding:0; border-radius:0; box-shadow:none; text-align:left; overflow:visible; background:transparent; border:0; }
+    #portal { display:none; min-height:100vh; color:#202124; }
+    body.portal-mode #storageAlert, body.portal-mode #s1, body.portal-mode #tt, body.portal-mode #tb, body.portal-mode #qf, body.portal-mode #rs { display:none !important; }
+    .portal-header { height:82px; background:rgba(255,255,255,.82); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,5vw,72px); border-bottom:1px solid #eee; box-sizing:border-box; }
+    .portal-brand { display:flex; align-items:center; gap:18px; }
+    .portal-logo { width:142px; max-height:48px; object-fit:contain; }
+    .portal-brand-copy { border-left:1px solid #ddd; padding-left:18px; }
+    .portal-brand-copy strong { display:block; font-size:1.2rem; }
+    .portal-brand-copy span { color:#777; font-size:.9rem; }
+    .portal-main { max-width:1280px; margin:0 auto; padding:40px 28px 32px; }
+    .portal-title { margin:0 0 6px; font-size:2rem; color:#222; }
+    .portal-subtitle { color:#737373; margin:0 0 24px; }
+    .portal-tools { display:flex; gap:12px; align-items:center; margin:0 0 24px; flex-wrap:wrap; }
+    .portal-search { flex:1 1 320px; max-width:520px; position:relative; }
+    .portal-search input { margin:0; padding:12px 16px 12px 44px; background:white; }
+    .portal-search:before { content:'⌕'; position:absolute; left:16px; top:5px; color:#777; font-size:27px; z-index:2; }
+    .portal-filter { border:1px solid #ddd; border-radius:24px; background:white; padding:10px 20px; color:#555; font:600 .95rem 'Sarabun',sans-serif; cursor:pointer; }
+    .portal-filter.active { background:#e60000; border-color:#e60000; color:#fff; }
+    .portal-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+    .course-card { background:white; border:1px solid #ececec; border-radius:16px; padding:20px; box-shadow:0 5px 18px rgba(0,0,0,.06); display:flex; flex-direction:column; min-height:264px; }
+    .course-card-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .course-id { color:#e60000; background:#fff0f0; border-radius:20px; padding:4px 12px; font-weight:700; font-size:.85rem; }
+    .course-state { color:#666; background:#f0f1f3; border-radius:20px; padding:4px 11px; font-size:.82rem; white-space:nowrap; }
+    .course-state.is-open { color:#14804a; background:#e8f6ee; }
+    .course-content { display:flex; gap:15px; align-items:flex-start; margin:18px 0; }
+    .exam-thumb { width:86px; height:78px; flex:0 0 86px; display:grid; place-items:center; border-radius:12px; background:linear-gradient(140deg,#fff0f0,#ffe1e1); color:#e60000; }
+    .exam-thumb svg { width:46px; height:46px; }
+    .course-name { font-weight:700; font-size:1.03rem; line-height:1.35; margin:0; overflow-wrap:anywhere; }
+    .course-meta { color:#777; font-size:.9rem; margin-top:9px; }
+    .course-action { margin-top:auto; display:block; text-align:center; text-decoration:none; border:0; border-radius:9px; padding:11px 14px; font:700 1rem 'Sarabun',sans-serif; color:white; background:#e60000; cursor:pointer; }
+    .course-action:hover { background:#c90000; }
+    .course-action.is-closed { background:#e5e7eb; color:#62666d; }
+    .portal-note { margin:26px 0 0; color:#777; font-size:.9rem; }
+    .portal-footer { text-align:center; padding:16px; color:#777; border-top:1px solid #e7e7e7; }
+    .portal-loading,.portal-empty,.portal-error { grid-column:1/-1; padding:28px; text-align:center; background:#fff; border-radius:12px; color:#777; }
+    @media(max-width:900px) { .portal-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media(max-width:600px) { .portal-header { height:auto; min-height:72px; padding:12px 16px; } .portal-logo { width:100px; } .portal-brand { gap:10px; } .portal-brand-copy { padding-left:10px; } .portal-brand-copy strong { font-size:1rem; } .portal-brand-copy span { font-size:.75rem; } .portal-main { padding:28px 16px; } .portal-title { font-size:1.55rem; } .portal-grid { grid-template-columns:1fr; gap:14px; } .course-card { min-height:230px; } }
+
+
+    /* Professional exam preparation loading screen */
+    #examLoading { position:fixed; inset:0; z-index:99999; display:none; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; background:linear-gradient(145deg,#fff 0%,#fafafa 58%,#fff3f3 100%); }
+    #examLoading .loading-panel { width:min(520px,100%); text-align:center; padding:42px 34px; background:rgba(255,255,255,.88); border:1px solid #f0e4e4; border-radius:24px; box-shadow:0 24px 70px rgba(40,20,20,.10); }
+    #examLoading .loading-brand { color:#777; font-size:.78rem; letter-spacing:.16em; font-weight:700; margin-bottom:22px; }
+    #examLoading .loading-art { width:176px; height:176px; object-fit:contain; margin:0 auto 18px; display:block; animation:loadingFloat 2.5s ease-in-out infinite; }
+    #examLoading h1 { margin:0; color:#202124; font-size:1.65rem; font-weight:700; }
+    #examLoading .loading-copy { margin:9px 0 25px; color:#6d7075; font-size:1rem; line-height:1.65; }
+    #examLoading .loading-track { height:7px; max-width:340px; margin:0 auto; background:#f0eeee; overflow:hidden; border-radius:9px; }
+    #examLoading .loading-progress { height:100%; width:36%; background:linear-gradient(90deg,#e60000,#ff6868); border-radius:9px; animation:loadingProgress 1.5s ease-in-out infinite; }
+    #examLoading .loading-foot { margin-top:18px; color:#9a9a9a; font-size:.82rem; }
+    @keyframes loadingProgress { 0% { transform:translateX(-115%); } 100% { transform:translateX(330%); } }
+    @keyframes loadingFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
+    @media(prefers-reduced-motion:reduce) { #examLoading .loading-art,.loading-progress { animation:none !important; } #examLoading .loading-progress { width:65%; } }
+
+  </style>
+</head>
+<body oncontextmenu="return false;">
+<div class="airasia-background" aria-hidden="true">
+  <svg viewBox="0 0 1600 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path class="route-glow" d="M-80 635 C90 585 150 375 330 345 C420 330 475 355 540 370"/>
+    <path class="flight-route-solid" d="M-80 635 C90 585 150 375 330 345 C420 330 475 355 540 370"/>
+    <path class="flight-route" d="M255 350 C440 220 630 230 800 260 C1040 302 1190 185 1680 72"/>
+    <path class="flight-route" d="M1080 735 C1240 650 1390 620 1680 560"/>
+    <circle cx="1465" cy="92" r="24" fill="none" stroke="#e60000" stroke-opacity=".10" stroke-width="1.5"/>
+    <circle cx="1515" cy="700" r="34" fill="none" stroke="#e60000" stroke-opacity=".08" stroke-width="1.5"/>
+    <circle cx="90" cy="780" r="190" fill="#e60000" opacity=".025"/>
+    <g class="flight-plane">
+      <path d="M30 0 C21 -1 13 -2 7 -3 L-8 -19 L-13 -19 L-9 -4 L-21 -9 L-25 -7 L-15 0 L-25 7 L-21 9 L-9 4 L-13 19 L-8 19 L7 3 C13 2 21 1 30 0 Z"/>
+      <animateMotion dur="22s" repeatCount="indefinite" rotate="auto" path="M-35 635 C90 585 150 375 330 345 C420 330 475 355 540 370"/>
+    </g>
+  </svg>
+</div>
+
+<div id="examLoading" role="status" aria-live="polite" aria-label="กำลังเตรียมข้อสอบ">
+  <div class="loading-panel">
+    <div class="loading-brand">TAA EXAM BANK</div>
+    <img class="loading-art" alt="ภาพกระดาษข้อสอบ" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgMjQwIDI0MCI+PGRlZnM+PHJhZGlhbEdyYWRpZW50IGlkPSJnIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmU4ZTgiLz48L3JhZGlhbEdyYWRpZW50PjxmaWx0ZXIgaWQ9InMiIHg9Ii0zMCUiIHk9Ii0yMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZURyb3BTaGFkb3cgZHg9IjAiIGR5PSI5IiBzdGREZXZpYXRpb249IjgiIGZsb29kLWNvbG9yPSIjYmQxZTFlIiBmbG9vZC1vcGFjaXR5PSIuMTQiLz48L2ZpbHRlcj48L2RlZnM+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTIwIiByPSIxMDgiIGZpbGw9InVybCgjZykiLz48ZyBmaWx0ZXI9InVybCgjcykiPjxwYXRoIGQ9Ik03OCA0N2g1OGwzMSAzMXYxMDZhMTAgMTAgMCAwIDEtMTAgMTBIODNhMTAgMTAgMCAwIDEtMTAtMTBWNTdhMTAgMTAgMCAwIDEgMTAtMTBaIiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTEzNiA0OHYzMWgzMSIgZmlsbD0iI2ZmZjBmMCIgc3Ryb2tlPSIjZjNiNGI0IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cmVjdCB4PSI5MSIgeT0iOTYiIHdpZHRoPSIyMyIgaGVpZ2h0PSIyMyIgcng9IjYiIGZpbGw9IiNlNjAwMDAiLz48cGF0aCBkPSJtOTcgMTA3IDUgNSA4LTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMy41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMTI1IDEwM2gyN00xMjUgMTE0aDIyIiBzdHJva2U9IiNjN2M5Y2QiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHJlY3QgeD0iOTEiIHk9IjEzMiIgd2lkdGg9IjIzIiBoZWlnaHQ9IjIzIiByeD0iNiIgZmlsbD0iI2U2MDAwMCIvPjxwYXRoIGQ9Im05NyAxNDMgNSA1IDgtMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMjUgMTM5aDI3TTEyNSAxNTBoMjIiIHN0cm9rZT0iI2M3YzljZCIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cmVjdCB4PSI5MSIgeT0iMTY4IiB3aWR0aD0iMjMiIGhlaWdodD0iMjMiIHJ4PSI2IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNjN2M5Y2QiIHN0cm9rZS13aWR0aD0iMyIvPjxwYXRoIGQ9Ik0xMjUgMTc1aDI3TTEyNSAxODZoMjIiIHN0cm9rZT0iI2M3YzljZCIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L2c+PGNpcmNsZSBjeD0iMTc1IiBjeT0iMTcxIiByPSIyNiIgZmlsbD0iI2U2MDAwMCIvPjxwYXRoIGQ9Im0xNjQgMTcxIDggOCAxNS0xNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==">
+    <h1>กำลังเตรียมข้อสอบ</h1>
+    <p class="loading-copy">ระบบกำลังตรวจสอบข้อมูลและเตรียมข้อสอบของคุณ<br>โปรดรอสักครู่</p>
+    <div class="loading-track"><div class="loading-progress"></div></div>
+    <div class="loading-foot">กรุณาอย่าปิดหรือรีเฟรชหน้าต่างนี้</div>
+  </div>
+</div>
+
+
+
+<div id="c">
+  
+  <section id="portal" aria-label="รายการวิชาสอบ">
+    <header class="portal-header">
+      <div class="portal-brand">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/f/f5/AirAsia_New_Logo.svg" class="portal-logo" alt="AirAsia">
+        <div class="portal-brand-copy"><strong>TAA Exam Portal</strong><span>เลือกวิชาที่ต้องการเข้าสอบ</span></div>
+      </div>
+    </header>
+    <main class="portal-main">
+      <h1 class="portal-title">รายการวิชาสอบ</h1>
+      <p class="portal-subtitle">เลือกวิชาที่ต้องการ ระบบจะแสดงวิชาที่ลงทะเบียนไว้โดยอัตโนมัติ</p>
+      <div class="portal-tools">
+        <div class="portal-search"><input id="portalSearch" type="search" placeholder="ค้นหารหัสหรือชื่อวิชา" aria-label="ค้นหารหัสหรือชื่อวิชา"></div>
+        <button class="portal-filter active" data-filter="all" onclick="setPortalFilter('all',this)">ทั้งหมด</button>
+        <button class="portal-filter" data-filter="on" onclick="setPortalFilter('on',this)">เปิดสอบ</button>
+      </div>
+      <div id="portalGrid" class="portal-grid"><div class="portal-loading">กำลังโหลดรายการวิชา...</div></div>
+      <p class="portal-note">สถานะและชื่อวิชาอ้างอิงจาก ExamRegistry • หากไม่มีรูปประจำวิชา ระบบจะแสดงรูปข้อสอบแทน</p>
+    </main>
+    <footer class="portal-footer">TAA ExamBank</footer>
+  </section>
+
+  <div id="storageAlert" style="display:none; background:#ffdede; color:red; padding:10px; font-size:0.85rem; margin-bottom:15px; border-radius:5px; border:1px solid red; text-align:left;">
+    <b>⚠️ คำเตือนโหมดไม่ระบุตัวตน (Incognito):</b><br>
+    ระบบตรวจพบว่าเครื่องของคุณไม่บันทึกข้อมูล<br>
+    <u>ห้ามปิดหน้าต่างหรือ Refresh ระหว่างสอบเด็ดขาด</u> มิฉะนั้นข้อมูลจะหายทันที
+  </div>
+
+  <div id="s1" class="z1">
+    <div style="display:flex;justify-content:center;margin-bottom:25px;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/f/f5/AirAsia_New_Logo.svg" class="logo-image">
+    </div>
+    <h3 id="examTitle">...</h3>
+    <div class="warning-box">
+        <strong>⚠️ คำเตือนสำคัญ:</strong><br>
+        <ol style="text-align: left; padding-left: 20px; margin: 10px 0;">
+          <li>ห้ามบันทึกภาพหน้าจอ หรือกระทำการทุจริตใดๆ</li>
+          <li>ระบบจับเวลาทันทีที่เริ่มทำข้อสอบ</li>
+          <li><strong>ห้ามสลับหน้าจอเกิน 10 ครั้ง:</strong> หากครบ 10 ครั้ง ระบบจะ <u>ยุติการสอบและส่งคำตอบทันที</u></li>
+          <li><strong>ถ้าเน็ตหลุด:</strong> ให้กรอกรหัสพนักงานเดิมเพื่อกู้คืนข้อมูล (ยกเว้นโหมด Incognito)</li>
+        </ol>
+    </div>
+    
+    <input type="text" id="eid" placeholder="รหัสพนักงาน" inputmode="numeric" pattern="[0-9]*">
+    
+    <input type="text" id="nm" placeholder="Full Name (English Only)" oninput="this.value = this.value.replace(/[^a-zA-Z .]/g, '')">
+    <input type="email" id="em" placeholder="อีเมล (Email Address)">
+    <button onclick="checkAndGo()" class="btn">เริ่มทำข้อสอบ</button>
+  </div>
+  
+  <div id="tt" class="z1" style="display:none;font-weight:bold;color:#E60000;margin-bottom:10px;text-align:right;">เวลาเหลือ: <span id="td"></span></div>
+  <div id="tb" class="z1"><div id="t"></div></div>
+  <div id="qf" class="z1" style="display:none; text-align:left;"></div>
+  
+  <div id="rs" class="z1" style="display:none; padding-top:20px;">
+    <div id="rsIcon" style="font-size:4rem; margin-bottom:15px;"></div>
+    <div id="rsStatus"></div>
+    
+    <h3 style="margin-top:15px; margin-bottom:10px;">บันทึกผลสำเร็จ</h3>
+    <p id="sc" style="font-size:1.3rem; margin:10px 0; font-weight:bold; color:#333;"></p>
+    <p id="wt" style="font-weight:bold; margin-bottom:15px; font-size:0.95rem;"></p>
+    
+    <div id="syncStatus"></div>
+    
+    <div class="action-btn-group">
+        <button id="btnRetry" onclick="retrySend()" class="btn btn-retry">🔁 ลองส่งข้อมูลอีกครั้ง</button>
+        <button id="btnManual" onclick="showManualData()" class="btn btn-manual">📋 คัดลอกผลสอบ (Backup)</button>
+    </div>
+
+    <div id="manualDataArea">
+        <p style="font-size:0.85rem; color:#d9534f; margin:5px 0;">*ส่งโค้ดด้านล่างนี้ให้เจ้าหน้าที่ หากส่งเข้าระบบไม่ได้</p>
+        <textarea id="dataBox" readonly onclick="this.select()"></textarea>
+    </div>
+    
+    <br><br>
+    <button onclick="logoutAndClose()" class="btn" style="background:#333;">โปรดกดปุ่มนี้เพื่อออกจากระบบ (Logout)</button>
+    
+    <div>
+        <button onclick="adminExport()" class="admin-link">🔒 Admin Export (CSV)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =CONFIG==========================================
+  const PASS_PERCENT = 80; 
+  // ⭐ ตั้งรหัสผ่าน Admin สำหรับโหลด CSV
+  const ADMIN_PWD = "TMCsurameaw888"; 
+  // =================================================
+
+  const EXID = "<?= examId ?>"; 
+  const TL = Number("<?= timeLimit ?>"); 
+  const EXNAME = "<?= examName ?>";
+  // ใส่ URL Web App ที่ลงท้ายด้วย /exec ตรงนี้ เมื่อเตรียมไฟล์บน GitHub
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwzR70Sl2zyuljokw8Fm0wn6iO5L3ZJffMv722m3SWkRpHejwQxeQKn5JgRxq93vqcFVw/exec";
+  // เมื่อ Apps Script เป็นผู้เสิร์ฟหน้า จะใช้ URL จริงที่ส่งมาจาก GScode ก่อน
+  const APP_URL_FROM_GAS = "<?= appUrl ?>";
+  const APP_URL = APP_URL_FROM_GAS.startsWith("https://script.google.com/macros/s/")
+    ? APP_URL_FROM_GAS
+    : WEB_APP_URL;
+
+  // ไม่มี ExamID = แสดง Portal; มี ExamID = ใช้หน้าเข้าสอบเดิมทั้งหมด
+  if (!EXID || EXID === 'undefined') {
+    document.body.classList.add('portal-mode');
+    document.getElementById('portal').style.display = 'block';
+    document.getElementById('storageAlert').style.display = 'none';
+    ['s1','tt','tb','qf','rs'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    window.scrollTo(0, 0);
+    loadPortalCourses();
+  } else {
+    document.getElementById('examTitle').innerText = EXNAME;
+  }
+
+  let portalCourses = [];
+  let portalFilter = 'all';
+  const examPaperIcon = `<svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M13 5h16l8 8v29H13a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="2.5"/><path d="M29 5v9h8M17 22h15M17 29h15M17 36h10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="m17 16 2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  function loadPortalCourses() {
+    if (!(window.google && google.script && google.script.run)) {
+      document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เปิดหน้านี้ผ่านลิงก์ Web App ของ Google Apps Script เพื่อโหลดรายการวิชา</div>';
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(rows => {
+        portalCourses = (rows || []).filter(r => r && r[0]).map(r => ({
+          id: String(r[0]).trim(), name: String(r[1] || '').trim(), status: String(r[2] || 'OFF').trim().toUpperCase(), time: Number(r[3]) || 0
+        }));
+        renderPortalCourses();
+      })
+      .withFailureHandler(err => {
+        document.getElementById('portalGrid').innerHTML = '<div class="portal-error">โหลดรายการวิชาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>';
+        console.error('Portal list error:', err);
+      })
+      .getAdminExamList();
+  }
+
+  function setPortalFilter(filter, button) {
+    portalFilter = filter;
+    document.querySelectorAll('.portal-filter').forEach(el => el.classList.remove('active'));
+    if (button) button.classList.add('active');
+    renderPortalCourses();
+  }
+
+  function renderPortalCourses() {
+    const grid = document.getElementById('portalGrid');
+    if (!grid) return;
+    const query = (document.getElementById('portalSearch')?.value || '').trim().toLowerCase();
+    const list = portalCourses.filter(course => {
+      const matchesText = !query || (course.id + ' ' + course.name).toLowerCase().includes(query);
+      const matchesStatus = portalFilter === 'all' || course.status === 'ON';
+      return matchesText && matchesStatus;
+    });
+    if (!list.length) {
+      grid.innerHTML = '<div class="portal-empty">ไม่พบวิชาที่ค้นหา</div>';
+      return;
+    }
+    grid.innerHTML = list.map(course => {
+      const isOpen = course.status === 'ON';
+      const safeId = escapePortalHtml(course.id);
+      const safeName = escapePortalHtml(course.name);
+      const action = isOpen ? 'เข้าสู่วิชา →' : 'ยังไม่เปิดสอบ';
+      return `<article class="course-card">
+        <div class="course-card-top"><span class="course-id">${safeId}</span><span class="course-state ${isOpen ? 'is-open' : ''}">${isOpen ? 'เปิดสอบ' : 'ปิดสอบ'}</span></div>
+        <div class="course-content"><div class="exam-thumb">${examPaperIcon}</div><div><h2 class="course-name">${safeName}</h2><div class="course-meta">แบบประเมิน${course.time ? ' • ' + course.time + ' นาที' : ''}</div></div></div>
+        ${isOpen
+          ? `<a class="course-action" href="${getPortalExamUrl(course.id)}">${action}</a>`
+          : `<button class="course-action is-closed" type="button" disabled>${action}</button>`}
+      </article>`;
+    }).join('');
+  }
+
+  function getPortalExamUrl(examId) {
+    // ใช้ URL /exec ที่ส่งมาจากฝั่ง Apps Script เพื่อไม่หลุดไป userCodeAppPanel
+    const base = APP_URL || window.location.href.split('?')[0];
+    return base + '?id=' + encodeURIComponent(examId);
+  }
+
+  function escapePortalHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const search = document.getElementById('portalSearch');
+    if (search) search.addEventListener('input', renderPortalCourses);
+  });
+
+  document.getElementById('examTitle').innerText = EXNAME;
+  
+  let allQ=[], ans={}, uN="", uI="", uE="", pg=0, wc=0, st=null, ti;
+  let SK = ""; 
+  const QPP = 5; 
+  const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+  const MAX_SWITCH = 10; 
+  
+  let pendingData = null;
+  let isSending = false;
+  let storageWorking = true;
+  let retryCount = 0;
+  let examLoadStartedAt = 0;
+
+  // ตรวจสอบ Storage ตั้งแต่เริ่ม
+  try {
+      localStorage.setItem('test_storage', '1');
+      localStorage.removeItem('test_storage');
+  } catch(e) {
+      storageWorking = false;
+      if (EXID && EXID !== 'undefined') document.getElementById('storageAlert').style.display = 'block';
+  }
+  
+  document.addEventListener("visibilitychange",()=>{ 
+    if(document.getElementById('qf').style.display==='block'){ 
+        if(document.hidden){
+            wc++; sav();
+            if(wc >= MAX_SWITCH) sub(true, true); 
+        } else {
+            if(wc >= MAX_SWITCH) sub(true, true);
+            else Swal.fire({title:`⚠️ เตือนครั้งที่ ${wc} / ${MAX_SWITCH}`,text:'ห้ามสลับหน้าจอ! หากครบ 10 ครั้ง ระบบจะส่งคำตอบทันที',icon:'warning',confirmButtonColor:'#E60000',allowOutsideClick:false});
+        }
+    } 
+  });
+  
+  function checkAndGo(){
+    const tN=document.getElementById('nm').value.trim(); 
+    const tI=document.getElementById('eid').value.trim(); 
+    const tE=document.getElementById('em').value.trim();
+    
+    if(!tN||!tI||!tE) return Swal.fire('Error','กรุณากรอกข้อมูลให้ครบถ้วน','error');
+    if(/[^a-zA-Z .]/.test(tN)) return Swal.fire('Error','กรุณากรอกชื่อเป็นภาษาอังกฤษเท่านั้น','error');
+    
+    SK = 'TAA_' + EXID + '_' + tI; 
+    
+    if(storageWorking) {
+        try {
+            const sv = localStorage.getItem(SK);
+            if(sv){
+                const d = JSON.parse(sv);
+                if(d.status === 'finished' && d.pendingData) {
+                    Swal.fire({
+                        title: 'พบข้อมูลค้างส่ง',
+                        text: 'คุณทำข้อสอบเสร็จแล้วแต่เน็ตหลุด ต้องการส่งใหม่หรือไม่?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'ส่งข้อมูล',
+                        cancelButtonText: 'ทำใหม่',
+                        confirmButtonColor: '#198754'
+                    }).then((r) => {
+                        if(r.isConfirmed) restoreFinished(d);
+                        else { localStorage.removeItem(SK); startNewExam(tN, tI, tE); }
+                    });
+                    return;
+                }
+                else if(Date.now() - d.st < SESSION_MAX_AGE_MS) {
+                    Swal.fire({
+                        title: 'กู้คืนการสอบ',
+                        text: `พบประวัติการสอบของรหัส ${tI} ที่ยังทำไม่เสร็จ`,
+                        icon: 'info',
+                        confirmButtonText: 'ทำต่อจากเดิม',
+                        confirmButtonColor: '#E60000',
+                        allowOutsideClick: false
+                    }).then(() => res(d));
+                    return;
+                } else {
+                    localStorage.removeItem(SK);
+                }
+            }
+        } catch(e) { console.warn("Recovery Check Error:", e); }
+    }
+
+    startNewExam(tN, tI, tE);
+  }
+
+  function startNewExam(name, id, email){
+  uN=name; uI=id; uE=email;
+  examLoadStartedAt = Date.now();
+  document.getElementById('s1').style.display='none';
+  showExamLoading();
+  
+  // ให้ Google Apps Script จัดการคิวเอง ถ้าระบบช้าก็จะหมุนรอไปเรื่อยๆ ไม่รีเฟรชหน้าทิ้ง
+  google.script.run.withSuccessHandler(d => {
+      finishExamLoading(() => {
+        hideExamLoading();
+        init(d);
+      });
+  }).withFailureHandler(e => {
+      finishExamLoading(() => {
+        hideExamLoading();
+        // แสดงข้อความจริงจาก Apps Script เพื่อระบุสาเหตุที่โหลดไม่ได้
+        const detail = (e && e.message) ? e.message : 'กรุณาตรวจสอบสิทธิ์หรือข้อมูลข้อสอบ แล้วลองอีกครั้ง';
+        Swal.fire('โหลดข้อสอบไม่สำเร็จ', detail, 'error');
+        document.getElementById('s1').style.display='block';
+      });
+  }).getInitialData(EXID, {name:uN, id:uI, email:uE});
+}
+  
+  function showExamLoading(){ const el=document.getElementById('examLoading'); if(el) el.style.display='flex'; }
+  function hideExamLoading(){ const el=document.getElementById('examLoading'); if(el) el.style.display='none'; }
+  function finishExamLoading(callback){
+    const minimumVisibleMs = 900;
+    const remaining = Math.max(0, minimumVisibleMs - (Date.now() - examLoadStartedAt));
+    setTimeout(callback, remaining);
+  }
+
+  function init(d){ hideExamLoading(); Swal.close(); allQ=d.questions; st=Date.now(); run(); timer(TL*60); ren(0); sav(); }
+  
+  function res(d){ 
+      uN=d.uN; uI=d.uI; uE=d.uE; allQ=d.allQ; ans=d.ans; pg=d.pg; wc=d.wc; st=d.st; 
+      run(); 
+      const el=Math.floor((Date.now()-st)/1000); 
+      if(el>=TL*60) sub(true); else { timer(TL*60); ren(pg); } 
+  }
+
+  function restoreFinished(d) {
+      document.getElementById('s1').style.display='none';
+      uN=d.uN; uI=d.uI; uE=d.uE; allQ=d.allQ; ans=d.ans; wc=d.wc; st=d.st; pendingData=d.pendingData;
+      let sc=0; allQ.forEach((q,i)=>{ if(Number(ans[i]) === Number(q.answer)) sc++; });
+      showResultScreen(sc);
+      sendDataToSheet(); 
+  }
+
+  function run(){ document.getElementById('qf').style.display='block'; document.getElementById('s1').style.display='none'; }
+  
+  function timer(d){
+    document.getElementById('tb').style.display='block'; document.getElementById('tt').style.display='block';
+    ti=setInterval(()=>{
+      const r=d-Math.floor((Date.now()-st)/1000), m=Math.floor(r/60), s=r%60;
+      document.getElementById('td').innerText=`${m}:${s<10?'0':''}${s}`; document.getElementById('t').style.width=(r/d*100)+'%';
+      if(r<=0){clearInterval(ti);sub(true);}
+    },1000);
+  }
+  
+  function ren(p, sTop=true){
+    sav(); const s=p*QPP, qs=allQ.slice(s,s+QPP);
+    let h=`<h3 style="text-align:center">${uN} (หน้า ${p+1}/${Math.ceil(allQ.length/QPP)})</h3><div class="wm">${Array(30).fill(`<span>${uE} ${uI}</span>`).join('')}</div>`;
+    qs.forEach((q,i)=>{
+      const idx=s+i;
+      h+=`<div class="z1" style="margin-bottom:25px"><p style="font-size:1.05rem"><b>${idx+1}.</b> ${q.question}</p>`;
+      q.options.forEach((o,oi)=>{ if(o && String(o).trim() !== "") h+=`<button class="opt ${ans[idx]===oi?'sel':''}" onclick="sel(${idx},${oi})">${o}</button>`; });
+      h+=`</div>`;
+    });
+    h+=`<div class="nav z1">`;
+    if(p>0) h+=`<button onclick="ren(${p-1});pg--">ย้อนกลับ</button>`; else h+=`<div></div>`;
+    if(s+QPP<allQ.length) h+=`<button onclick="ren(${p+1});pg++" class="p">ถัดไป</button>`; else h+=`<button onclick="cfm()" class="p">ส่งคำตอบ</button>`;
+    h+=`</div>`;
+    document.getElementById('qf').innerHTML=h; 
+    if(sTop) window.scrollTo(0,0);
+  }
+  
+  function sel(q,o){ ans[q]=o; ren(pg, false); }
+  
+  function sav(){ 
+      if(!storageWorking) return;
+      try { 
+          if(SK) localStorage.setItem(SK,JSON.stringify({uN,uI,uE,allQ,ans,pg,wc,st, status:'ongoing'})); 
+      } catch(e){} 
+  }
+  
+  function savFinished(pData){
+      if(!storageWorking) return;
+      try {
+          if(SK) localStorage.setItem(SK,JSON.stringify({uN,uI,uE,allQ,ans,wc,st, status:'finished', pendingData:pData}));
+      } catch(e){}
+  }
+
+  function cfm(){ const l=allQ.length-Object.keys(ans).length; if(l>0) Swal.fire({title:`เหลือ ${l} ข้อ`,text:'ยืนยันส่ง?',showCancelButton:true,confirmButtonColor:'#E60000'}).then(r=>{if(r.isConfirmed) sub()}); else sub(); }
+  
+  function sub(auto=false, isViolation=false){
+    clearInterval(ti); 
+    
+    if(isViolation) Swal.fire('ยุติการสอบ','คุณสลับหน้าจอครบ 10 ครั้ง ระบบตัดจบการสอบทันที','error');
+    else if(auto) Swal.fire('หมดเวลา','ส่งคำตอบอัตโนมัติ','warning');
+    else Swal.close(); 
+
+    document.getElementById('qf').style.display='none'; document.getElementById('tt').style.display='none'; document.getElementById('tb').style.display='none';
+    document.getElementById('rs').style.display='block';
+    
+    let sc=0, fa=[]; 
+    allQ.forEach((q,i)=>{ 
+        const uIdx = ans[i]; const cIdx = Number(q.answer); const isCorrect = (Number(uIdx) === cIdx);
+        const uTxt = uIdx !== undefined ? q.options[uIdx] : 'ไม่ตอบ'; const cTxt = q.options[cIdx];
+        const allOpts = q.options.filter(o => o && String(o).trim() !== "").join(' / ');
+        let logStr = isCorrect ? `${q.question} :: ✅ (ถูก) ${uTxt}` : `${q.question} :: ❌ (ผิด) ${uTxt} (เฉลย: ${cTxt})`;
+        logStr += ` ||| [ตัวเลือก: ${allOpts}]`;
+        if(isCorrect) sc++; fa.push(logStr);
+    });
+    
+    showResultScreen(sc);
+
+    pendingData = {
+      email:uE, employeeId:uI, name:uN, score:`${sc}/${allQ.length}`, warningCount:wc, 
+      timeUsed:Math.floor((Date.now()-st)/1000)+'s', examName:EXNAME, examId:EXID, questions:allQ.map(q=>q.question), 
+      formattedAnswers:fa
+    };
+
+    savFinished(pendingData);
+    sendDataToSheet();
+  }
+  
+  function showResultScreen(sc){
+    const percent = allQ.length > 0 ? Math.round((sc / allQ.length) * 100) : 0;
+    const rsIconDiv = document.getElementById('rsIcon');
+    const rsStatusDiv = document.getElementById('rsStatus');
+    
+    if (percent >= PASS_PERCENT) {
+        rsIconDiv.innerHTML = '🎉';
+        rsStatusDiv.innerHTML = `<h2 class="pass-status" style="color:#198754;">ผ่านการทดสอบ (${percent}%)</h2>`;
+    } else {
+        rsIconDiv.innerHTML = '😢';
+        rsStatusDiv.innerHTML = `<h2 class="fail-status">ไม่ผ่านการทดสอบ (${percent}%)</h2><p style="color:#666;margin:0;">(เกณฑ์ผ่าน ${PASS_PERCENT}%)</p>`;
+    }
+    document.getElementById('sc').innerText=`คะแนนที่ได้: ${sc} / ${allQ.length}`;
+    const we=document.getElementById('wt'); 
+    if(wc >= MAX_SWITCH) { we.innerText=`⛔ ถูกปรับตก (สลับหน้าจอ ${wc} ครั้ง)`; we.style.color='red'; }
+    else { we.innerText=wc>0?`⚠️ มีการสลับหน้าจอ ${wc} ครั้ง`:'✅ ไม่มีการสลับหน้าจอ'; we.style.color=wc>0?'#FF6600':'green'; }
+  }
+
+  function sendDataToSheet() {
+      if(isSending) return;
+      isSending = true;
+      
+      const statusBox = document.getElementById('syncStatus');
+      const retryBtn = document.getElementById('btnRetry');
+      const manualBtn = document.getElementById('btnManual');
+      
+      statusBox.style.display = 'block';
+      statusBox.className = 'sync-sending';
+      
+      // Update ข้อความตามจำนวนครั้งที่ Retry
+      let msg = '⏳ กำลังบันทึกข้อมูลลงระบบ...';
+      if(retryCount > 0) msg = `⏳ กำลังพยายามส่งใหม่ (ครั้งที่ ${retryCount}/3)...`;
+      
+      statusBox.innerHTML = msg;
+      retryBtn.style.display = 'none';
+      manualBtn.style.display = 'none';
+
+      const timeoutCheck = setTimeout(() => {
+          if(isSending) handleSendError("Timeout: Server ตอบสนองช้าเกินไป");
+      }, 20000); 
+
+      google.script.run
+        .withSuccessHandler(() => {
+            clearTimeout(timeoutCheck);
+            isSending = false;
+            retryCount = 0; // Reset
+            statusBox.className = 'sync-success';
+            statusBox.innerHTML = '✅ บันทึกข้อมูลเรียบร้อยแล้ว';
+            if(storageWorking) try { localStorage.removeItem(SK); } catch(e){}
+        })
+        .withFailureHandler((e) => {
+            clearTimeout(timeoutCheck);
+            handleSendError(e.message);
+        })
+        .saveResult(pendingData);
+  }
+
+  function handleSendError(msg) {
+      isSending = false;
+      const statusBox = document.getElementById('syncStatus');
+      const retryBtn = document.getElementById('btnRetry');
+      const manualBtn = document.getElementById('btnManual');
+      
+      console.error("Save failed:", msg);
+      
+      // ถ้ายังไม่ครบ 3 ครั้ง ให้ลองใหม่
+      if (retryCount < 3) {
+          retryCount++;
+          statusBox.className = 'sync-sending';
+          statusBox.innerHTML = `⚠️ ส่งไม่ผ่าน! กำลังลองใหม่ใน 3 วินาที (ครั้งที่ ${retryCount}/3)...`;
+          
+          setTimeout(() => {
+              sendDataToSheet();
+          }, 3000); // รอ 3 วิแล้วส่งใหม่
+          return;
+      }
+
+      // ถ้าครบ 3 ครั้งแล้วยังไม่ได้ -> แจ้งเตือนใหญ่
+      Swal.fire({
+          title: 'ส่งข้อมูลไม่สำเร็จ!',
+          text: 'ระบบพยายามส่งข้อมูล 3 ครั้งแล้วแต่ไม่สำเร็จ กรุณาแจ้งผู้คุมสอบทันที หรือกดปุ่ม "คัดลอกผลสอบ" เพื่อส่งให้เจ้าหน้าที่',
+          icon: 'error',
+          confirmButtonText: 'รับทราบ',
+          confirmButtonColor: '#E60000'
+      });
+
+      let errorMsg = `⚠️ <b>บันทึกข้อมูลไม่สำเร็จ (ลองครบ 3 ครั้งแล้ว)</b><br><small>${msg}</small><br>`;
+      
+      if(storageWorking) {
+         errorMsg += `ข้อมูลถูกเซฟลงเครื่องแล้ว! กดปุ่ม "ลองส่งข้อมูลอีกครั้ง" หรือ รีเฟรชหน้าเว็บ`;
+      } else {
+         errorMsg += `<b>❌ เครื่องไม่บันทึกข้อมูล (Incognito)</b><br>กรุณากดปุ่ม "คัดลอกผลสอบ" ด้านล่าง หรือใช้ปุ่ม "Admin Export" เพื่อโหลดไฟล์คะแนนทันที!`;
+         manualBtn.style.display = 'block'; 
+      }
+
+      statusBox.className = 'sync-error';
+      statusBox.innerHTML = errorMsg;
+      retryBtn.style.display = 'block';
+  }
+
+  function retrySend() { 
+      retryCount = 0; // ถ้ากดเอง ให้เริ่มนับ 1 ใหม่
+      sendDataToSheet(); 
+  }
+
+  // 📋 Backup Manual Copy
+  function showManualData() {
+      const box = document.getElementById('dataBox');
+      const area = document.getElementById('manualDataArea');
+      const jsonStr = JSON.stringify(pendingData);
+      const base64Str = btoa(unescape(encodeURIComponent(jsonStr)));
+      box.value = "EXAM_DATA::" + base64Str;
+      area.style.display = 'block';
+      Swal.fire({ title: 'Backup Data', text: 'Copy text in box to admin', icon: 'info' });
+  }
+
+  // 🔐 Admin CSV Export (Always Visible)
+  function adminExport() {
+    if(!pendingData) return Swal.fire('Error', 'ไม่พบข้อมูลผลสอบ (กรุณาทำข้อสอบให้เสร็จก่อน)', 'error');
+
+    Swal.fire({
+        title: '🔒 Admin Access',
+        input: 'password',
+        inputLabel: 'Enter Password to Download CSV',
+        inputPlaceholder: 'Password',
+        showCancelButton: true,
+        confirmButtonText: 'Unlock & Download',
+        confirmButtonColor: '#2c3e50'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (result.value === ADMIN_PWD) {
+                generateCSV();
+            } else {
+                Swal.fire('Access Denied', 'รหัสผ่านไม่ถูกต้อง', 'error');
+            }
+        }
+    });
+  }
+
+  function generateCSV() {
+    const d = pendingData;
+    let csvContent = "\uFEFF"; // BOM for Thai text
+    
+    // Header
+    const header = ['Timestamp', 'EmployeeID', 'Name', 'Email', 'ExamID', 'Score', 'WarningCount', 'TimeUsed'];
+    d.formattedAnswers.forEach((_, i) => header.push(`Q${i+1}`));
+    csvContent += header.map(e => `"${e}"`).join(",") + "\n";
+
+    // Data Row
+    const row = [
+        new Date().toLocaleString(),
+        d.employeeId,
+        d.name,
+        d.email,
+        d.examId,
+        d.score,
+        d.warningCount,
+        d.timeUsed
+    ];
+    d.formattedAnswers.forEach(ans => {
+        let cleanAns = ans.replace(/"/g, '""').replace(/\n/g, ' ');
+        row.push(`"${cleanAns}"`);
+    });
+
+    csvContent += row.join(",") + "\n";
+
+    // Trigger Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ExamResult_${d.employeeId}_${d.examId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // ✅ จุดที่ 2: แก้ไขฟังก์ชัน Logout เพื่อให้เด้งกลับมาถูกวิชา
+  function logoutAndClose(){
+      if(storageWorking) {
+          try { localStorage.removeItem(SK); } catch(e){}
+      }
+      
+      Swal.fire({
+          title: 'กำลังออกจากระบบ...',
+          text: 'กรุณารอสักครู่ ระบบกำลังเคลียร์บัญชีของคุณ',
+          icon: 'info',
+          showConfirmButton: false,
+          timer: 1500
+      }).then(() => {
+          // Base URL ของระบบ (เอามาแค่ถึงคำว่า /exec)
+          const BASE_APP_URL = 'https://script.google.com/macros/s/AKfycbwzR70Sl2zyuljokw8Fm0wn6iO5L3ZJffMv722m3SWkRpHejwQxeQKn5JgRxq93vqcFVw/exec';
+          
+          // ประกอบร่างให้กลายเป็นลิงก์วิชาปัจจุบัน (เช่น ?id=FA001)
+          const returnUrl = BASE_APP_URL + '?id=' + EXID;
+          
+          // ส่งไป Logout แล้วบังคับให้ redirect กลับมาที่ลิงก์เต็ม
+          window.top.location.href = 'https://accounts.google.com/Logout?continue=' + encodeURIComponent(returnUrl);
+      });
+  }
+
+  // ✅ จุดที่ 3: ระบบป้องกันการโกงขั้นแอดวานซ์ (ดักจับการกดคีย์บอร์ด)
+  document.addEventListener('keydown', function(e) {
+      // ป้องกัน F12 (Inspect Element)
+      if (e.key === 'F12' || e.keyCode === 123) {
+          e.preventDefault();
+      }
+      // ป้องกัน Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+U (ดู Source Code)
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'i' || e.key === 'j')) {
+          e.preventDefault();
+      }
+      if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+          e.preventDefault();
+      }
+      // ป้องกัน Ctrl+C, Ctrl+V, Ctrl+P (Copy, Paste, Print)
+      if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'p' || e.key === 'C' || e.key === 'V' || e.key === 'P')) {
+          e.preventDefault();
+          Swal.fire('คำเตือน', 'ไม่อนุญาตให้คัดลอก หรือพิมพ์ข้อสอบครับ', 'warning');
+      }
+  });
+
+</script>
+</body>
+</html>
