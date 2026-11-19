@@ -156,6 +156,7 @@
     <div class="loading-foot">กรุณาอย่าปิดหรือรีเฟรชหน้าต่างนี้</div>
   </div>
 </div>
+<iframe id="gasApiFrame" name="gasApiFrame" title="Exam service" style="display:none"></iframe>
 
 
 
@@ -245,7 +246,7 @@
 
 <script>
   // =CONFIG==========================================
-  const PASS_PERCENT = 80; 
+  let PASS_PERCENT = 80; 
   // ⭐ ตั้งรหัสผ่าน Admin สำหรับโหลด CSV
   const ADMIN_PWD = "TMCsurameaw888"; 
   // =================================================
@@ -263,9 +264,9 @@
 
   const IS_APPS_SCRIPT_HTML = !!(window.google && google.script && google.script.run);
   // GitHub Pages does not evaluate Apps Script template tags. An empty ID means Portal.
-  const EXID = SCRIPT_EXID.startsWith("<?=") ? '' : SCRIPT_EXID;
-  const TL = Number(SCRIPT_TIMELIMIT) || 0;
-  const EXNAME = SCRIPT_EXAMNAME.startsWith("<?=") ? '' : SCRIPT_EXAMNAME;
+  const EXID = SCRIPT_EXID.startsWith('<') ? (new URLSearchParams(window.location.search).get('id') || '') : SCRIPT_EXID;
+  let TL = Number(SCRIPT_TIMELIMIT) || 0;
+  let EXNAME = SCRIPT_EXAMNAME.startsWith('<') ? '' : SCRIPT_EXAMNAME;
 
   // ไม่มี ExamID = แสดง Portal; มี ExamID = ใช้หน้าเข้าสอบเดิมทั้งหมด
   if (!EXID || EXID === 'undefined') {
@@ -276,7 +277,8 @@
     window.scrollTo(0, 0);
     loadPortalCourses();
   } else {
-    document.getElementById('examTitle').innerText = EXNAME;
+    document.getElementById('examTitle').innerText = EXNAME || 'กำลังโหลดข้อมูลวิชา...';
+    if (!IS_APPS_SCRIPT_HTML) loadGithubExamInfo();
   }
 
   let portalCourses = [];
@@ -303,31 +305,81 @@
   }
 
   function loadPortalCoursesFromApi() {
-    const callbackName = 'taaPortalCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
-    const script = document.createElement('script');
-    const cleanup = () => {
-      if (script.parentNode) script.parentNode.removeChild(script);
-      try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
-    };
-    const timeout = setTimeout(() => {
-      cleanup();
-      document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เชื่อมต่อรายการวิชาไม่สำเร็จ กรุณาลองโหลดหน้าใหม่</div>';
-    }, 15000);
-    window[callbackName] = rows => {
-      clearTimeout(timeout);
-      cleanup();
+    callJsonpApi({api:'examList'}).then(rows => {
       portalCourses = (rows || []).filter(r => r && r[0]).map(r => ({
         id: String(r[0]).trim(), name: String(r[1] || '').trim(), status: String(r[2] || 'OFF').trim().toUpperCase(), time: Number(r[3]) || 0
       }));
       renderPortalCourses();
-    };
-    script.onerror = () => {
-      clearTimeout(timeout);
-      cleanup();
+    }).catch(() => {
       document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เชื่อมต่อ Google Apps Script ไม่ได้ กรุณาตรวจสอบการ Deploy</div>';
-    };
-    script.src = WEB_APP_URL + '?api=examList&callback=' + encodeURIComponent(callbackName) + '&_=' + Date.now();
-    document.head.appendChild(script);
+    });
+  }
+
+  function callJsonpApi(params) {
+    return new Promise((resolve, reject) => {
+      const callbackName = 'taaApi_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      const script = document.createElement('script');
+      const cleanup = () => {
+        if (script.parentNode) script.parentNode.removeChild(script);
+        try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+      };
+      const timeout = setTimeout(() => { cleanup(); reject(new Error('API timeout')); }, 20000);
+      window[callbackName] = data => { clearTimeout(timeout); cleanup(); resolve(data); };
+      script.onerror = () => { clearTimeout(timeout); cleanup(); reject(new Error('API request failed')); };
+      const query = new URLSearchParams({...params, callback:callbackName, _:Date.now()});
+      script.src = WEB_APP_URL + '?' + query.toString();
+      document.head.appendChild(script);
+    });
+  }
+
+  function loadGithubExamInfo() {
+    const startedAt = Date.now();
+    showExamLoading();
+    callJsonpApi({api:'examInfo', id:EXID}).then(info => {
+      const finish = () => {
+        hideExamLoading();
+        if (!info) {
+          Swal.fire('ไม่พบวิชา', 'ไม่พบรหัสวิชานี้ในระบบ', 'error').then(() => { window.location.href = window.location.pathname; });
+          return;
+        }
+        if (String(info.status).trim().toUpperCase() !== 'ON') {
+          Swal.fire('วิชานี้ปิดสอบแล้ว', 'กรุณากลับไปเลือกรายวิชาอื่น', 'info').then(() => { window.location.href = window.location.pathname; });
+          return;
+        }
+        EXNAME = String(info.name || '');
+        TL = Number(info.timeLimit) || 0;
+        PASS_PERCENT = Number(info.passPercent) || 0;
+        document.getElementById('examTitle').innerText = EXNAME;
+      };
+      setTimeout(finish, Math.max(0, 900 - (Date.now() - startedAt)));
+    }).catch(() => {
+      hideExamLoading();
+      Swal.fire('เชื่อมต่อไม่ได้', 'โหลดข้อมูลวิชาไม่สำเร็จ กรุณาลองใหม่', 'error');
+    });
+  }
+
+  const pendingGasRequests = new Map();
+  window.addEventListener('message', event => {
+    const frame = document.getElementById('gasApiFrame');
+    if (!frame || event.source !== frame.contentWindow || !event.data || !event.data.requestId) return;
+    const pending = pendingGasRequests.get(event.data.requestId);
+    if (!pending) return;
+    clearTimeout(pending.timeout);
+    pendingGasRequests.delete(event.data.requestId);
+    event.data.ok ? pending.resolve(event.data.data) : pending.reject(new Error(event.data.error || 'ระบบประมวลผลไม่สำเร็จ'));
+  });
+
+  function callAppsScriptPost(action, data) {
+    return new Promise((resolve, reject) => {
+      const requestId = 'req_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+      const timeout = setTimeout(() => { pendingGasRequests.delete(requestId); reject(new Error('หมดเวลารอคำตอบจากระบบ')); }, 60000);
+      pendingGasRequests.set(requestId, {resolve, reject, timeout});
+      const form = document.createElement('form');
+      form.method = 'POST'; form.action = WEB_APP_URL; form.target = 'gasApiFrame'; form.style.display = 'none';
+      const input = document.createElement('input'); input.type = 'hidden'; input.name = 'payload';
+      input.value = JSON.stringify({requestId, action, ...data});
+      form.appendChild(input); document.body.appendChild(form); form.submit(); form.remove();
+    });
   }
 
   function setPortalFilter(filter, button) {
@@ -367,8 +419,8 @@
 
   function getPortalExamUrl(examId) {
     // ใช้ URL /exec ที่ส่งมาจากฝั่ง Apps Script เพื่อไม่หลุดไป userCodeAppPanel
-    const base = APP_URL || window.location.href.split('?')[0];
-    return base + '?id=' + encodeURIComponent(examId);
+    if (IS_APPS_SCRIPT_HTML) return APP_URL + '?id=' + encodeURIComponent(examId);
+    return window.location.pathname + '?id=' + encodeURIComponent(examId);
   }
 
   function escapePortalHtml(value) {
@@ -471,13 +523,14 @@
   document.getElementById('s1').style.display='none';
   showExamLoading();
   
-  // ให้ Google Apps Script จัดการคิวเอง ถ้าระบบช้าก็จะหมุนรอไปเรื่อยๆ ไม่รีเฟรชหน้าทิ้ง
-  google.script.run.withSuccessHandler(d => {
+  // เรียก backend ผ่าน Apps Script; บน GitHub Pages ใช้ POST bridge ผ่าน iframe
+  const onStartSuccess = d => {
       finishExamLoading(() => {
         hideExamLoading();
         init(d);
       });
-  }).withFailureHandler(e => {
+  };
+  const onStartFailure = e => {
       finishExamLoading(() => {
         hideExamLoading();
         // แสดงข้อความจริงจาก Apps Script เพื่อระบุสาเหตุที่โหลดไม่ได้
@@ -485,7 +538,14 @@
         Swal.fire('โหลดข้อสอบไม่สำเร็จ', detail, 'error');
         document.getElementById('s1').style.display='block';
       });
-  }).getInitialData(EXID, {name:uN, id:uI, email:uE});
+  };
+  if (IS_APPS_SCRIPT_HTML) {
+    google.script.run.withSuccessHandler(onStartSuccess).withFailureHandler(onStartFailure)
+      .getInitialData(EXID, {name:uN, id:uI, email:uE});
+  } else {
+    callAppsScriptPost('startExam', {examId:EXID, userDetails:{name:uN, id:uI, email:uE}})
+      .then(onStartSuccess).catch(onStartFailure);
+  }
 }
   
   function showExamLoading(){ const el=document.getElementById('examLoading'); if(el) el.style.display='flex'; }
@@ -632,20 +692,23 @@
           if(isSending) handleSendError("Timeout: Server ตอบสนองช้าเกินไป");
       }, 20000); 
 
-      google.script.run
-        .withSuccessHandler(() => {
+      const onSaveSuccess = () => {
             clearTimeout(timeoutCheck);
             isSending = false;
             retryCount = 0; // Reset
             statusBox.className = 'sync-success';
             statusBox.innerHTML = '✅ บันทึกข้อมูลเรียบร้อยแล้ว';
             if(storageWorking) try { localStorage.removeItem(SK); } catch(e){}
-        })
-        .withFailureHandler((e) => {
+      };
+      const onSaveFailure = (e) => {
             clearTimeout(timeoutCheck);
-            handleSendError(e.message);
-        })
-        .saveResult(pendingData);
+            handleSendError((e && e.message) || String(e || 'ไม่ทราบสาเหตุ'));
+      };
+      if (IS_APPS_SCRIPT_HTML) {
+        google.script.run.withSuccessHandler(onSaveSuccess).withFailureHandler(onSaveFailure).saveResult(pendingData);
+      } else {
+        callAppsScriptPost('saveResult', {result:pendingData}).then(onSaveSuccess).catch(onSaveFailure);
+      }
   }
 
   function handleSendError(msg) {
