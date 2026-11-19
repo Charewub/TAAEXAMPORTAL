@@ -73,7 +73,7 @@
     textarea { width: 100%; height: 80px; padding: 10px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 5px; color: #555; background: #eee; box-sizing: border-box;}
 
     /* Portal layer */
-    body.portal-mode { display:block; padding:0; min-height:100vh; background:transparent; }
+    body.portal-mode { display:block; padding:0; min-height:100vh; background:radial-gradient(ellipse at 2% 100%,rgba(230,0,0,.085),transparent 30%),radial-gradient(ellipse at 100% 5%,rgba(230,0,0,.07),transparent 28%),linear-gradient(135deg,#f5f5f8 0%,#fff 50%,#f5f5f8 100%); }
     body.portal-mode #c { width:100%; max-width:none; min-height:100vh; box-sizing:border-box; padding:0; border-radius:0; box-shadow:none; text-align:left; overflow:visible; background:transparent; border:0; }
     #portal { display:none; min-height:100vh; color:#202124; }
     body.portal-mode #storageAlert, body.portal-mode #s1, body.portal-mode #tt, body.portal-mode #tb, body.portal-mode #qf, body.portal-mode #rs { display:none !important; }
@@ -109,6 +109,23 @@
     .portal-note { margin:26px 0 0; color:#777; font-size:.9rem; }
     .portal-footer { text-align:center; padding:16px; color:#777; border-top:1px solid #e7e7e7; }
     .portal-loading,.portal-empty,.portal-error { grid-column:1/-1; padding:28px; text-align:center; background:#fff; border-radius:12px; color:#777; }
+    .portal-loading-message { display:flex; align-items:center; gap:9px; margin:-8px 0 13px; color:#d90000; font-weight:600; font-size:.92rem; }
+    .portal-loading-spinner { width:17px; height:17px; border:2px solid #ffd3d3; border-top-color:#e60000; border-radius:50%; animation:portalSpin .8s linear infinite; }
+    .skeleton-card { position:relative; overflow:hidden; }
+    .skeleton-card:after { content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.72) 48%,transparent 75%); animation:skeletonShimmer 1.55s ease-in-out infinite; pointer-events:none; }
+    .skeleton { display:block; border-radius:999px; background:#e5e7eb; }
+    .skeleton-code { width:76px; height:24px; }
+    .skeleton-state { width:68px; height:24px; }
+    .skeleton-icon { width:86px; height:78px; flex:0 0 86px; border-radius:12px; background:#e5e7eb; }
+    .skeleton-lines { flex:1; padding-top:4px; }
+    .skeleton-line { height:13px; margin:0 0 10px; }
+    .skeleton-line.long { width:96%; }
+    .skeleton-line.medium { width:78%; }
+    .skeleton-line.short { width:42%; height:11px; margin-top:14px; }
+    .skeleton-action { height:43px; width:100%; margin-top:auto; border-radius:9px; }
+    @keyframes skeletonShimmer { 100% { transform:translateX(100%); } }
+    @keyframes portalSpin { to { transform:rotate(360deg); } }
+    @media(prefers-reduced-motion:reduce) { .skeleton-card:after,.portal-loading-spinner { animation:none; } }
     @media(max-width:900px) { .portal-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media(max-width:600px) { .portal-header { height:auto; min-height:72px; padding:12px 16px; } .portal-logo { width:100px; } .portal-brand { gap:10px; } .portal-brand-copy { padding-left:10px; } .portal-brand-copy strong { font-size:1rem; } .portal-brand-copy span { font-size:.75rem; } .portal-main { padding:28px 16px; } .portal-title { font-size:1.55rem; } .portal-grid { grid-template-columns:1fr; gap:14px; } .course-card { min-height:230px; } }
 
@@ -177,7 +194,15 @@
         <button class="portal-filter active" data-filter="all" onclick="setPortalFilter('all',this)">ทั้งหมด</button>
         <button class="portal-filter" data-filter="on" onclick="setPortalFilter('on',this)">เปิดสอบ</button>
       </div>
-      <div id="portalGrid" class="portal-grid"><div class="portal-loading">กำลังโหลดรายการวิชา...</div></div>
+      <div id="portalLoadingMessage" class="portal-loading-message" role="status" aria-live="polite"><span class="portal-loading-spinner" aria-hidden="true"></span>กำลังโหลดรายวิชา...</div>
+      <div id="portalGrid" class="portal-grid" aria-busy="true">
+        <article class="course-card skeleton-card" aria-hidden="true"><div class="course-card-top"><span class="skeleton skeleton-code"></span><span class="skeleton skeleton-state"></span></div><div class="course-content"><span class="skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line long"></span><span class="skeleton skeleton-line medium"></span><span class="skeleton skeleton-line short"></span></div></div><span class="skeleton skeleton-action"></span></article>
+        <article class="course-card skeleton-card" aria-hidden="true"><div class="course-card-top"><span class="skeleton skeleton-code"></span><span class="skeleton skeleton-state"></span></div><div class="course-content"><span class="skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line long"></span><span class="skeleton skeleton-line medium"></span><span class="skeleton skeleton-line short"></span></div></div><span class="skeleton skeleton-action"></span></article>
+        <article class="course-card skeleton-card" aria-hidden="true"><div class="course-card-top"><span class="skeleton skeleton-code"></span><span class="skeleton skeleton-state"></span></div><div class="course-content"><span class="skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line long"></span><span class="skeleton skeleton-line medium"></span><span class="skeleton skeleton-line short"></span></div></div><span class="skeleton skeleton-action"></span></article>
+        <article class="course-card skeleton-card" aria-hidden="true"><div class="course-card-top"><span class="skeleton skeleton-code"></span><span class="skeleton skeleton-state"></span></div><div class="course-content"><span class="skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line long"></span><span class="skeleton skeleton-line medium"></span><span class="skeleton skeleton-line short"></span></div></div><span class="skeleton skeleton-action"></span></article>
+        <article class="course-card skeleton-card" aria-hidden="true"><div class="course-card-top"><span class="skeleton skeleton-code"></span><span class="skeleton skeleton-state"></span></div><div class="course-content"><span class="skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line long"></span><span class="skeleton skeleton-line medium"></span><span class="skeleton skeleton-line short"></span></div></div><span class="skeleton skeleton-action"></span></article>
+        <article class="course-card skeleton-card" aria-hidden="true"><div class="course-card-top"><span class="skeleton skeleton-code"></span><span class="skeleton skeleton-state"></span></div><div class="course-content"><span class="skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line long"></span><span class="skeleton skeleton-line medium"></span><span class="skeleton skeleton-line short"></span></div></div><span class="skeleton skeleton-action"></span></article>
+      </div>
       <p class="portal-note">สถานะและชื่อวิชาอ้างอิงจาก ExamRegistry • หากไม่มีรูปประจำวิชา ระบบจะแสดงรูปข้อสอบแทน</p>
     </main>
     <footer class="portal-footer">TAA ExamBank</footer>
@@ -283,6 +308,7 @@
 
   let portalCourses = [];
   let portalFilter = 'all';
+  let portalDataLoaded = false;
   const examPaperIcon = `<svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M13 5h16l8 8v29H13a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="2.5"/><path d="M29 5v9h8M17 22h15M17 29h15M17 36h10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="m17 16 2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   function loadPortalCourses() {
@@ -295,9 +321,11 @@
         portalCourses = (rows || []).filter(r => r && r[0]).map(r => ({
           id: String(r[0]).trim(), name: String(r[1] || '').trim(), status: String(r[2] || 'OFF').trim().toUpperCase(), time: Number(r[3]) || 0
         }));
+        portalDataLoaded = true;
         renderPortalCourses();
       })
       .withFailureHandler(err => {
+        hidePortalLoading();
         document.getElementById('portalGrid').innerHTML = '<div class="portal-error">โหลดรายการวิชาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>';
         console.error('Portal list error:', err);
       })
@@ -309,10 +337,19 @@
       portalCourses = (rows || []).filter(r => r && r[0]).map(r => ({
         id: String(r[0]).trim(), name: String(r[1] || '').trim(), status: String(r[2] || 'OFF').trim().toUpperCase(), time: Number(r[3]) || 0
       }));
+      portalDataLoaded = true;
       renderPortalCourses();
     }).catch(() => {
+      hidePortalLoading();
       document.getElementById('portalGrid').innerHTML = '<div class="portal-error">เชื่อมต่อ Google Apps Script ไม่ได้ กรุณาตรวจสอบการ Deploy</div>';
     });
+  }
+
+  function hidePortalLoading() {
+    const message = document.getElementById('portalLoadingMessage');
+    if (message) message.style.display = 'none';
+    const grid = document.getElementById('portalGrid');
+    if (grid) grid.setAttribute('aria-busy', 'false');
   }
 
   function callJsonpApi(params) {
@@ -358,27 +395,38 @@
     });
   }
 
-  const pendingGasRequests = new Map();
-  window.addEventListener('message', event => {
-    const frame = document.getElementById('gasApiFrame');
-    if (!frame || event.source !== frame.contentWindow || !event.data || !event.data.requestId) return;
-    const pending = pendingGasRequests.get(event.data.requestId);
-    if (!pending) return;
-    clearTimeout(pending.timeout);
-    pendingGasRequests.delete(event.data.requestId);
-    event.data.ok ? pending.resolve(event.data.data) : pending.reject(new Error(event.data.error || 'ระบบประมวลผลไม่สำเร็จ'));
-  });
-
   function callAppsScriptPost(action, data) {
     return new Promise((resolve, reject) => {
       const requestId = 'req_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
-      const timeout = setTimeout(() => { pendingGasRequests.delete(requestId); reject(new Error('หมดเวลารอคำตอบจากระบบ')); }, 60000);
-      pendingGasRequests.set(requestId, {resolve, reject, timeout});
+      let settled = false;
+      const startedAt = Date.now();
+      const finish = (error, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        error ? reject(error) : resolve(value);
+      };
+      const timeout = setTimeout(() => finish(new Error('ระบบใช้เวลานานเกินไป กรุณาลองอีกครั้ง')), 45000);
+      const poll = () => {
+        if (settled) return;
+        callJsonpApi({api:'postResult', requestId}).then(result => {
+          if (result && result.requestId === requestId) {
+            result.ok ? finish(null, result.data) : finish(new Error(result.error || 'ระบบประมวลผลไม่สำเร็จ'));
+          } else if (Date.now() - startedAt < 45000) {
+            setTimeout(poll, 900);
+          }
+        }).catch(() => {
+          if (Date.now() - startedAt < 45000) setTimeout(poll, 1500);
+        });
+      };
       const form = document.createElement('form');
       form.method = 'POST'; form.action = WEB_APP_URL; form.target = 'gasApiFrame'; form.style.display = 'none';
       const input = document.createElement('input'); input.type = 'hidden'; input.name = 'payload';
       input.value = JSON.stringify({requestId, action, ...data});
-      form.appendChild(input); document.body.appendChild(form); form.submit(); form.remove();
+      form.appendChild(input); document.body.appendChild(form);
+      try { form.submit(); } catch (error) { finish(error); }
+      setTimeout(() => form.remove(), 1000);
+      setTimeout(poll, 500);
     });
   }
 
@@ -391,7 +439,8 @@
 
   function renderPortalCourses() {
     const grid = document.getElementById('portalGrid');
-    if (!grid) return;
+    if (!grid || !portalDataLoaded) return;
+    hidePortalLoading();
     const query = (document.getElementById('portalSearch')?.value || '').trim().toLowerCase();
     const list = portalCourses.filter(course => {
       const matchesText = !query || (course.id + ' ' + course.name).toLowerCase().includes(query);
@@ -690,7 +739,7 @@
 
       const timeoutCheck = setTimeout(() => {
           if(isSending) handleSendError("Timeout: Server ตอบสนองช้าเกินไป");
-      }, 20000); 
+      }, 50000); 
 
       const onSaveSuccess = () => {
             clearTimeout(timeoutCheck);
